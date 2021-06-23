@@ -4,7 +4,8 @@ import numpy as np
 from PIL import Image
 import torch
 import torchvision
-from torch.utils.data import random_split, DataLoader, Dataset, datasets
+from torch.utils.data import random_split, DataLoader, Dataset
+import skimage.io as io
 import pytorch_lightning as pl
 from pytorch_lightning import seed_everything
 from pytorch_lightning.trainer import Trainer
@@ -128,16 +129,26 @@ class WrappedDataset(Dataset):
         return self.data[idx]
 
 
-class ImageFolderWithPaths(datasets.ImageFolder):
-    # override the __getitem__ method. this is the method that dataloader calls
-    def __getitem__(self, index):
-        # this is what ImageFolder normally returns 
-        original_tuple = super(ImageFolderWithPaths, self).__getitem__(index)
-        # the image file path
-        path = self.imgs[index][0]
-        # make a new tuple that includes original and the path
-        tuple_with_path = (original_tuple + (path,))
-        return tuple_with_path
+class ModernFontDataset(Dataset):
+    def __init__(self, root_dir, transform=None):
+        self.root_dir = root_dir
+        self.transform = transform
+
+    def __len__(self):
+        return len(os.listdir(self.root_dir))
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_name = os.path.join(self.root_dir, os.listdir(self.root_dir)[idx])
+        image = io.imread(img_name)
+        sample = {'image': image}
+
+        if self.transform:
+            sample = self.transform(sample)
+
+        return sample
 
 
 class DataModuleFromConfig(pl.LightningDataModule):
@@ -192,13 +203,13 @@ class DataModuleFromDir(pl.LightningDataModule):
         self.datasets = dict()
         self.num_workers = num_workers if num_workers is not None else batch_size*2
         if train is not None:
-            self.datasets["train"] = train
+            self.datasets["train"] = train['target']
             self.train_dataloader = self._train_dataloader
         if validation is not None:
-            self.datasets["validation"] = validation
+            self.datasets["validation"] = validation['target']
             self.val_dataloader = self._val_dataloader
         if test is not None:
-            self.datasets["test"] = test
+            self.datasets["test"] = test['target']
             self.test_dataloader = self._test_dataloader
         self.wrap = wrap
 
@@ -210,13 +221,13 @@ class DataModuleFromDir(pl.LightningDataModule):
 
     def _train_dataloader(self):
 
-        train_dataset = ImageFolderWithPaths(self.datasets["train"])
+        train_dataset = ModernFontDataset(self.datasets["train"])
         return DataLoader(train_dataset, batch_size=self.batch_size,
                           num_workers=self.num_workers, shuffle=True)
 
     def _val_dataloader(self):
         
-        val_dataset = ImageFolderWithPaths(self.datasets["validation"])
+        val_dataset = ModernFontDataset(self.datasets["validation"])
         return DataLoader(val_dataset,
                           batch_size=self.batch_size,
                           num_workers=self.num_workers)

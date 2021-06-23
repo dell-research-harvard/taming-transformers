@@ -9,8 +9,8 @@ import imageio
 from tqdm import tqdm
 
 
-def draw_single_char(ch, font, canvas_size=64, x_offset=0, y_offset=-13):
-    img = Image.new("L", (canvas_size, canvas_size), 255)
+def draw_single_char(ch, font, canvas_size=64, x_offset=0, y_offset=0):
+    img = Image.new("RGB", (canvas_size, canvas_size), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     draw.text((x_offset, y_offset), ch, 0, font=font)
     return img
@@ -30,7 +30,7 @@ def resize_image(img, w=64, h=64):
     return img
 
 
-def main(source_path, ratio, datafolder, charlist_path=None):
+def main(source_path, ratio, datafolder, y_offset=0, x_offset=0, charlist_path=None):
 
     random.seed(20171201)
 
@@ -55,7 +55,7 @@ def main(source_path, ratio, datafolder, charlist_path=None):
             os.mkdir(folder)
 
     for ch in charlist:
-        source_img = draw_single_char(ch, font=source_font)
+        source_img = draw_single_char(ch, font=source_font, y_offset=y_offset, x_offset=x_offset)
         sourcelist.append(source_img)
 
     arr = np.arange(len(charlist))
@@ -88,4 +88,5 @@ if __name__ == '__main__':
         datafolder='/home/jscarlson/Downloads/modern_src_font_imgs', # '/home/jscarlson/Downloads/modern_dst_font_imgs',
         charlist_path='/home/jscarlson/Documents/sawarabi_mincho_glyphs.txt', # '/home/jscarlson/Documents/jis_level_one_kanji.txt',
         ratio=0.9, 
+        y_offset=0,
     )
