@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 import torch
 import torchvision
-from torch.utils.data import random_split, DataLoader, Dataset
+from torch.utils.data import random_split, DataLoader, Dataset, datasets
 import pytorch_lightning as pl
 from pytorch_lightning import seed_everything
 from pytorch_lightning.trainer import Trainer
@@ -128,6 +128,18 @@ class WrappedDataset(Dataset):
         return self.data[idx]
 
 
+class ImageFolderWithPaths(datasets.ImageFolder):
+    # override the __getitem__ method. this is the method that dataloader calls
+    def __getitem__(self, index):
+        # this is what ImageFolder normally returns 
+        original_tuple = super(ImageFolderWithPaths, self).__getitem__(index)
+        # the image file path
+        path = self.imgs[index][0]
+        # make a new tuple that includes original and the path
+        tuple_with_path = (original_tuple + (path,))
+        return tuple_with_path
+
+
 class DataModuleFromConfig(pl.LightningDataModule):
     def __init__(self, batch_size, train=None, validation=None, test=None,
                  wrap=False, num_workers=None):
@@ -169,6 +181,50 @@ class DataModuleFromConfig(pl.LightningDataModule):
 
     def _test_dataloader(self):
         return DataLoader(self.datasets["test"], batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+
+class DataModuleFromDir(pl.LightningDataModule):
+    def __init__(self, batch_size, train=None, validation=None, test=None,
+                 wrap=False, num_workers=None):
+        super().__init__()
+        self.batch_size = batch_size
+        self.datasets = dict()
+        self.num_workers = num_workers if num_workers is not None else batch_size*2
+        if train is not None:
+            self.datasets["train"] = train
+            self.train_dataloader = self._train_dataloader
+        if validation is not None:
+            self.datasets["validation"] = validation
+            self.val_dataloader = self._val_dataloader
+        if test is not None:
+            self.datasets["test"] = test
+            self.test_dataloader = self._test_dataloader
+        self.wrap = wrap
+
+    def prepare_data(self):
+        pass
+
+    def setup(self, stage=None):
+        pass
+
+    def _train_dataloader(self):
+
+        train_dataset = ImageFolderWithPaths(self.datasets["train"])
+        return DataLoader(train_dataset, batch_size=self.batch_size,
+                          num_workers=self.num_workers, shuffle=True)
+
+    def _val_dataloader(self):
+        
+        val_dataset = ImageFolderWithPaths(self.datasets["validation"])
+        return DataLoader(val_dataset,
+                          batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def _test_dataloader(self):
+
+        test_dataset = ImageFolderWithPaths(self.datasets["test"])
+        return DataLoader(test_dataset, batch_size=self.batch_size,
                           num_workers=self.num_workers)
 
 
