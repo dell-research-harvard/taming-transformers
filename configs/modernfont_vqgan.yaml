@@ -31,6 +31,6 @@ data:
     batch_size: 3
     num_workers: 8
     train:
-      target: /home/jscarlson/Downloads/modern_src_font_imgs/train
+      target: /mnt/data01/modern_src_font_imgs/train
     validation:
-      target: /home/jscarlson/Downloads/modern_src_font_imgs/test
+      target: /mnt/data01/modern_src_font_imgs/test
